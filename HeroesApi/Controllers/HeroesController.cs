@@ -10,8 +10,26 @@ namespace HeroesApi.Controllers;
 [Route("api/[controller]")]
 public class HeroesController : ControllerBase {
     [HttpGet]
-    public ActionResult<List<Hero>> GetAll() {
-        return Ok(HeroesStore.Heroes);
+    public ActionResult<List<Hero>> GetAll([FromQuery] string? universe = null)
+    {
+        var heroes = HeroesStore.Heroes;
+        
+        if (!string.IsNullOrEmpty(universe))
+        {
+            heroes = heroes.Where(h => h.Universe.ToString().Equals(universe, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+        
+        return Ok(heroes);
+    }
+
+    [HttpGet("search")]
+    public ActionResult<List<Hero>> SearchByName([FromQuery] string name)
+    {
+        var heroes = HeroesStore.Heroes
+            .Where(h => h.Name.Contains(name, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        
+        return Ok(heroes);
     }
 
     [HttpGet("{id}")]
@@ -45,16 +63,15 @@ public class HeroesController : ControllerBase {
             note = "Сравните имена полей и значение universe в двух вариантах"
         });
     }
-    
+
     [HttpGet("serialize")]
     public ActionResult GetSerialize() {
-        var options = new JsonSerializerOptions
-        {
+        var options = new JsonSerializerOptions {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             WriteIndented = true,
             Converters = { new JsonStringEnumConverter() }
         };
-        
+
         var hero = new Hero {
             Id = 99,
             Name = "Тестовый герой",
@@ -65,14 +82,16 @@ public class HeroesController : ControllerBase {
             Weapon = new() { Name = "Клавиатура", IsRanged = false },
             InternalNotes = "Это поле не попадёт в JSON"
         };
-        
+
         string serialized = JsonSerializer.Serialize(hero, options);
         var deserialized = JsonSerializer.Deserialize<Hero>(serialized, options);
-        
+
         return Ok(new {
             serializedJson = serialized,
             deserializedObject = deserialized,
             internalNotesAfterDeserialize = deserialized?.InternalNotes ?? "null — поле было проигнорировано"
         });
     }
+
+    
 }
